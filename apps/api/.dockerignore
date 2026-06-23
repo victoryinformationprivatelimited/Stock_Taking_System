@@ -1,0 +1,10 @@
+node_modules
+dist
+static/*
+!static/.gitkeep
+.env
+.env.*
+!.env.example
+*.log
+coverage
+.git

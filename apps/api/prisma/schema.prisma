@@ -1,0 +1,253 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  MANAGER
+  COUNTER
+}
+
+enum AssignmentStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+}
+
+enum CountResult {
+  MATCH
+  MISMATCH
+}
+
+enum CountRecordStatus {
+  PENDING_APPROVAL
+  APPROVED
+  RECOUNT_REQUESTED
+  REJECTED_MAX_ATTEMPTS
+}
+
+enum StockUploadStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum LogSeverity {
+  INFO
+  WARN
+  ERROR
+}
+
+enum LogSource {
+  MOBILE
+  WEB
+  API
+}
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  users         User[]
+  products      Product[]
+  stockUploads  StockUpload[]
+  storeLayouts  StoreLayout[]
+  assignments   CountAssignment[]
+  auditLogs     AuditLog[]
+  errorLogs     ErrorLogEntry[]
+  settings      TenantSettings?
+
+  @@map("tenants")
+}
+
+model TenantSettings {
+  id               String   @id @default(uuid())
+  tenantId         String   @unique
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  maxRecountAttempts Int    @default(3)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("tenant_settings")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email     String
+  passwordHash String
+  fullName  String
+  role      UserRole
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  managedAssignments  CountAssignment[] @relation("ManagerAssignments")
+  counterAssignments  CountAssignment[] @relation("CounterAssignments")
+  stockUploads        StockUpload[]
+  submittedCounts     CountRecord[]     @relation("SubmittedCounts")
+  approvedCounts       CountRecord[]    @relation("ApprovedCounts")
+  auditLogs           AuditLog[]
+
+  @@unique([tenantId, email])
+  @@map("users")
+}
+
+model StockUpload {
+  id           String            @id @default(uuid())
+  tenantId     String
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  filename     String
+  uploadedById String
+  uploadedBy   User              @relation(fields: [uploadedById], references: [id])
+  uploadedAt   DateTime          @default(now())
+  status       StockUploadStatus @default(PROCESSING)
+  errorMessage String?
+
+  products Product[]
+
+  @@map("stock_uploads")
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  productCode   String
+  description   String
+  imageUrl      String?
+  barcode       String
+  systemQty     Decimal  @default(0)
+  location      String?
+  rackNumber    String?
+  isActive      Boolean  @default(true)
+  lastUploadId  String?
+  lastUpload    StockUpload? @relation(fields: [lastUploadId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  assignments        CountAssignment[]
+  layoutProductMaps  LayoutProductMap[]
+
+  @@unique([tenantId, productCode])
+  @@index([tenantId, barcode])
+  @@map("products")
+}
+
+model StoreLayout {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  imageUrl  String
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+
+  zones LayoutZone[]
+
+  @@map("store_layouts")
+}
+
+model LayoutZone {
+  id        String   @id @default(uuid())
+  layoutId  String
+  layout    StoreLayout @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+  zoneCode  String
+  label     String?
+  geometry  Json
+
+  productMaps LayoutProductMap[]
+
+  @@map("layout_zones")
+}
+
+model LayoutProductMap {
+  id        String     @id @default(uuid())
+  zoneId    String
+  zone      LayoutZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([zoneId, productId])
+  @@map("layout_product_map")
+}
+
+model CountAssignment {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  managerId  String
+  manager    User     @relation("ManagerAssignments", fields: [managerId], references: [id])
+  counterId  String
+  counter    User     @relation("CounterAssignments", fields: [counterId], references: [id])
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  assignedAt DateTime @default(now())
+  dueAt      DateTime?
+  status     AssignmentStatus @default(PENDING)
+
+  countRecords CountRecord[]
+
+  @@index([tenantId, counterId, status])
+  @@map("count_assignments")
+}
+
+model CountRecord {
+  id                String           @id @default(uuid())
+  assignmentId      String
+  assignment        CountAssignment  @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  attemptNumber     Int
+  scannedBarcode    String
+  barcodeValidated  Boolean
+  countedQty        Decimal
+  systemQtySnapshot Decimal
+  result            CountResult
+  status            CountRecordStatus @default(PENDING_APPROVAL)
+  submittedById     String
+  submittedBy       User             @relation("SubmittedCounts", fields: [submittedById], references: [id])
+  submittedAt       DateTime         @default(now())
+  approvedById      String?
+  approvedBy        User?            @relation("ApprovedCounts", fields: [approvedById], references: [id])
+  approvedAt        DateTime?
+  deviceId          String?
+  syncedAt          DateTime?
+
+  @@index([assignmentId, attemptNumber])
+  @@map("count_records")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorId    String
+  actor      User     @relation(fields: [actorId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  payload    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, entityType, entityId])
+  @@map("audit_logs")
+}
+
+model ErrorLogEntry {
+  id        String      @id @default(uuid())
+  tenantId  String
+  tenant    Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  source    LogSource
+  severity  LogSeverity
+  message   String
+  stack     String?
+  context   Json?
+  createdAt DateTime    @default(now())
+
+  @@index([tenantId, severity, createdAt])
+  @@map("error_logs")
+}
