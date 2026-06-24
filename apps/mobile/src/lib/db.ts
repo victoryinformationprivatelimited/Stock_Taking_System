@@ -18,6 +18,8 @@ export async function getDb() {
         rack_number TEXT,
         system_qty REAL NOT NULL,
         status TEXT NOT NULL,
+        zone_id TEXT,
+        zone_label TEXT,
         attempts_used INTEGER NOT NULL DEFAULT 0,
         last_attempt_status TEXT,
         last_attempt_result TEXT,
@@ -45,6 +47,25 @@ export async function getDb() {
         synced INTEGER NOT NULL DEFAULT 0
       );
     `);
+
+    // Migrate older installs that created the table before zone_id/zone_label existed.
+    const columns = await dbInstance.getAllAsync<{ name: string }>(`PRAGMA table_info(assignments)`);
+    const columnNames = new Set(columns.map((c) => c.name));
+    if (!columnNames.has('zone_id')) {
+      await dbInstance.execAsync(`ALTER TABLE assignments ADD COLUMN zone_id TEXT`);
+    }
+    if (!columnNames.has('zone_label')) {
+      await dbInstance.execAsync(`ALTER TABLE assignments ADD COLUMN zone_label TEXT`);
+    }
   }
   return dbInstance;
+}
+
+export async function clearLocalUserData() {
+  const db = await getDb();
+  await db.execAsync(`
+    DELETE FROM assignments;
+    DELETE FROM pending_count_records;
+    DELETE FROM error_logs;
+  `);
 }

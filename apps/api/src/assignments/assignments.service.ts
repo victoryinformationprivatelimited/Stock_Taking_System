@@ -4,6 +4,7 @@ import { TenantContext } from '../common/tenant-context';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { AuditService } from '../audit/audit.service';
 import { CreateAssignmentDto } from './dto/create-assignment.dto';
+import { AssignZoneDto } from './dto/assign-zone.dto';
 import { SubmitCountDto } from './dto/submit-count.dto';
 
 const MAX_RECOUNT_ATTEMPTS = 3;
@@ -56,12 +57,72 @@ export class AssignmentsService {
     return created;
   }
 
+  async assignZone(dto: AssignZoneDto) {
+    const tenantId = this.tenantContext.tenantId;
+
+    const counter = await this.prisma.user.findFirst({
+      where: { id: dto.counterId, tenantId, role: 'COUNTER', isActive: true },
+    });
+    if (!counter) {
+      throw new BadRequestException('Counter user not found');
+    }
+
+    const zone = await this.prisma.layoutZone.findFirst({
+      where: { id: dto.zoneId, layout: { tenantId } },
+      include: { productMaps: { include: { product: true } } },
+    });
+    if (!zone) {
+      throw new BadRequestException('Zone not found');
+    }
+    if (zone.productMaps.length === 0) {
+      throw new BadRequestException('This zone has no products mapped to it');
+    }
+
+    const productIds = zone.productMaps.map((m) => m.productId);
+
+    // Skip products that already have an unresolved (non-DONE) assignment for this counter.
+    const existing = await this.prisma.countAssignment.findMany({
+      where: { tenantId, counterId: dto.counterId, productId: { in: productIds }, status: { not: 'DONE' } },
+      select: { productId: true },
+    });
+    const existingProductIds = new Set(existing.map((e) => e.productId));
+    const toAssign = zone.productMaps.filter((m) => !existingProductIds.has(m.productId));
+
+    if (toAssign.length === 0) {
+      throw new BadRequestException('All products in this zone are already assigned to this counter');
+    }
+
+    const created = await this.prisma.$transaction(
+      toAssign.map((m) =>
+        this.prisma.countAssignment.create({
+          data: {
+            tenantId,
+            managerId: this.tenantContext.userId,
+            counterId: dto.counterId,
+            productId: m.productId,
+            zoneId: zone.id,
+            dueAt: dto.dueAt ? new Date(dto.dueAt) : undefined,
+          },
+        }),
+      ),
+    );
+
+    await this.audit.log('assignment.assignZone', 'CountAssignment', counter.id, {
+      counterId: dto.counterId,
+      zoneId: zone.id,
+      productCount: created.length,
+    });
+
+    return created;
+  }
+
   async findAllForManager() {
     return this.prisma.countAssignment.findMany({
       where: { tenantId: this.tenantContext.tenantId },
       include: {
         product: true,
         counter: { select: { id: true, fullName: true, email: true } },
+        zone: { select: { id: true, zoneCode: true, label: true } },
         countRecords: { orderBy: { attemptNumber: 'desc' }, take: 1 },
       },
       orderBy: { assignedAt: 'desc' },
@@ -73,6 +134,7 @@ export class AssignmentsService {
       where: { tenantId: this.tenantContext.tenantId, counterId: this.tenantContext.userId },
       include: {
         product: true,
+        zone: { select: { id: true, zoneCode: true, label: true } },
         countRecords: { orderBy: { attemptNumber: 'desc' } },
       },
       orderBy: { assignedAt: 'asc' },

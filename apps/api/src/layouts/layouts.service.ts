@@ -32,6 +32,25 @@ export class LayoutsService {
     });
   }
 
+  async findAllZones() {
+    const zones = await this.prisma.layoutZone.findMany({
+      where: { layout: { tenantId: this.tenantContext.tenantId } },
+      include: {
+        layout: { select: { id: true, name: true } },
+        _count: { select: { productMaps: true } },
+      },
+      orderBy: { zoneCode: 'asc' },
+    });
+
+    return zones.map((z) => ({
+      id: z.id,
+      zoneCode: z.zoneCode,
+      label: z.label,
+      layout: z.layout,
+      productCount: z._count.productMaps,
+    }));
+  }
+
   async findOne(id: string) {
     const layout = await this.prisma.storeLayout.findFirst({
       where: { id, tenantId: this.tenantContext.tenantId },

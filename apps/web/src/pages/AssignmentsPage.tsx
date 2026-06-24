@@ -10,6 +10,7 @@ import {
   Select,
   Stack,
   Table,
+  Tabs,
   Text,
   Title,
 } from '@mantine/core';
@@ -28,6 +29,14 @@ interface CounterUser {
   fullName: string;
 }
 
+interface Zone {
+  id: string;
+  zoneCode: string;
+  label: string | null;
+  layout: { id: string; name: string };
+  productCount: number;
+}
+
 interface CountRecord {
   id: string;
   attemptNumber: number;
@@ -42,6 +51,7 @@ interface Assignment {
   status: 'PENDING' | 'IN_PROGRESS' | 'DONE';
   product: Product;
   counter: { id: string; fullName: string; email: string };
+  zone: { id: string; zoneCode: string; label: string | null } | null;
   countRecords: CountRecord[];
 }
 
@@ -62,6 +72,8 @@ export function AssignmentsPage() {
   const queryClient = useQueryClient();
   const [counterId, setCounterId] = useState<string | null>(null);
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [zoneCounterId, setZoneCounterId] = useState<string | null>(null);
+  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
 
   const { data: assignments } = useQuery({
     queryKey: ['assignments'],
@@ -78,12 +90,38 @@ export function AssignmentsPage() {
     queryFn: async () => (await api.get<Product[]>('/products')).data,
   });
 
+  const { data: zones } = useQuery({
+    queryKey: ['layouts', 'zones'],
+    queryFn: async () => (await api.get<Zone[]>('/layouts/zones')).data,
+  });
+
   const assignMutation = useMutation({
     mutationFn: async () => api.post('/assignments', { counterId, productIds: selectedProductIds }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
       setSelectedProductIds([]);
       notifications.show({ title: 'Assigned', message: 'Products assigned to counter', color: 'green' });
+    },
+  });
+
+  const assignZoneMutation = useMutation({
+    mutationFn: async () =>
+      api.post('/assignments/zone', { counterId: zoneCounterId, zoneId: selectedZoneId }),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
+      setSelectedZoneId(null);
+      notifications.show({
+        title: 'Zone assigned',
+        message: `${res.data.length} product(s) assigned`,
+        color: 'green',
+      });
+    },
+    onError: (err: any) => {
+      notifications.show({
+        title: 'Could not assign zone',
+        message: err?.response?.data?.message ?? 'Something went wrong',
+        color: 'red',
+      });
     },
   });
 
@@ -117,38 +155,86 @@ export function AssignmentsPage() {
         <Title order={4} mb="md">
           New Assignment
         </Title>
-        <Stack>
-          <Select
-            label="Counter"
-            placeholder="Select counter..."
-            data={counters?.map((c) => ({ value: c.id, label: c.fullName })) ?? []}
-            value={counterId}
-            onChange={setCounterId}
-            w={300}
-          />
-          <Paper withBorder radius="sm" p="sm" mah={220} style={{ overflow: 'hidden' }}>
-            <ScrollArea h={180}>
-              <Stack gap={6}>
-                {products?.map((p) => (
-                  <Checkbox
-                    key={p.id}
-                    label={`${p.productCode} — ${p.description}`}
-                    checked={selectedProductIds.includes(p.id)}
-                    onChange={() => toggleProduct(p.id)}
-                  />
-                ))}
-              </Stack>
-            </ScrollArea>
-          </Paper>
-          <Button
-            w="fit-content"
-            disabled={!counterId || selectedProductIds.length === 0}
-            loading={assignMutation.isPending}
-            onClick={() => assignMutation.mutate()}
-          >
-            Assign {selectedProductIds.length || ''} product(s)
-          </Button>
-        </Stack>
+        <Tabs defaultValue="product">
+          <Tabs.List mb="md">
+            <Tabs.Tab value="product">By Product</Tabs.Tab>
+            <Tabs.Tab value="zone">By Zone</Tabs.Tab>
+          </Tabs.List>
+
+          <Tabs.Panel value="product">
+            <Stack>
+              <Select
+                label="Counter"
+                placeholder="Select counter..."
+                data={counters?.map((c) => ({ value: c.id, label: c.fullName })) ?? []}
+                value={counterId}
+                onChange={setCounterId}
+                w={300}
+              />
+              <Paper withBorder radius="sm" p="sm" mah={220} style={{ overflow: 'hidden' }}>
+                <ScrollArea h={180}>
+                  <Stack gap={6}>
+                    {products?.map((p) => (
+                      <Checkbox
+                        key={p.id}
+                        label={`${p.productCode} — ${p.description}`}
+                        checked={selectedProductIds.includes(p.id)}
+                        onChange={() => toggleProduct(p.id)}
+                      />
+                    ))}
+                  </Stack>
+                </ScrollArea>
+              </Paper>
+              <Button
+                w="fit-content"
+                disabled={!counterId || selectedProductIds.length === 0}
+                loading={assignMutation.isPending}
+                onClick={() => assignMutation.mutate()}
+              >
+                Assign {selectedProductIds.length || ''} product(s)
+              </Button>
+            </Stack>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="zone">
+            <Stack>
+              <Select
+                label="Counter"
+                placeholder="Select counter..."
+                data={counters?.map((c) => ({ value: c.id, label: c.fullName })) ?? []}
+                value={zoneCounterId}
+                onChange={setZoneCounterId}
+                w={300}
+              />
+              <Select
+                label="Zone"
+                placeholder="Select zone..."
+                data={
+                  zones?.map((z) => ({
+                    value: z.id,
+                    label: `${z.label ?? z.zoneCode} (${z.layout.name}) — ${z.productCount} product(s)`,
+                  })) ?? []
+                }
+                value={selectedZoneId}
+                onChange={setSelectedZoneId}
+                w={420}
+              />
+              <Button
+                w="fit-content"
+                disabled={!zoneCounterId || !selectedZoneId}
+                loading={assignZoneMutation.isPending}
+                onClick={() => assignZoneMutation.mutate()}
+              >
+                Assign zone
+              </Button>
+              {!zones?.length && (
+                <Text size="sm" c="dimmed">
+                  No zones yet — create one from Store Layouts first.
+                </Text>
+              )}
+            </Stack>
+          </Tabs.Panel>
+        </Tabs>
       </Paper>
 
       <Title order={4}>All Assignments</Title>
@@ -157,6 +243,7 @@ export function AssignmentsPage() {
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Product</Table.Th>
+              <Table.Th>Zone</Table.Th>
               <Table.Th>Counter</Table.Th>
               <Table.Th>Status</Table.Th>
               <Table.Th>Latest Count</Table.Th>
@@ -169,6 +256,17 @@ export function AssignmentsPage() {
               return (
                 <Table.Tr key={a.id}>
                   <Table.Td fw={600}>{a.product.productCode}</Table.Td>
+                  <Table.Td>
+                    {a.zone ? (
+                      <Badge variant="light" color="violet">
+                        {a.zone.label ?? a.zone.zoneCode}
+                      </Badge>
+                    ) : (
+                      <Text size="sm" c="dimmed">
+                        —
+                      </Text>
+                    )}
+                  </Table.Td>
                   <Table.Td>{a.counter.fullName}</Table.Td>
                   <Table.Td>
                     <Badge color={assignmentStatusColor[a.status]}>{a.status}</Badge>

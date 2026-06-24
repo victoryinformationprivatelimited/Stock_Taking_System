@@ -162,6 +162,7 @@ model LayoutZone {
   geometry  Json
 
   productMaps LayoutProductMap[]
+  assignments CountAssignment[]
 
   @@map("layout_zones")
 }
@@ -187,6 +188,8 @@ model CountAssignment {
   counter    User     @relation("CounterAssignments", fields: [counterId], references: [id])
   productId  String
   product    Product  @relation(fields: [productId], references: [id])
+  zoneId     String?
+  zone       LayoutZone? @relation(fields: [zoneId], references: [id], onDelete: SetNull)
   assignedAt DateTime @default(now())
   dueAt      DateTime?
   status     AssignmentStatus @default(PENDING)

@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { AssignmentsService } from './assignments.service';
 import { CreateAssignmentDto } from './dto/create-assignment.dto';
+import { AssignZoneDto } from './dto/assign-zone.dto';
 import { SubmitCountDto } from './dto/submit-count.dto';
 import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
@@ -15,6 +16,12 @@ export class AssignmentsController {
   @Roles(UserRole.MANAGER)
   create(@Body() dto: CreateAssignmentDto) {
     return this.assignmentsService.create(dto);
+  }
+
+  @Post('zone')
+  @Roles(UserRole.MANAGER)
+  assignZone(@Body() dto: AssignZoneDto) {
+    return this.assignmentsService.assignZone(dto);
   }
 
   @Get()

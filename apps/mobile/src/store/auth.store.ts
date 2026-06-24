@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
+import { clearLocalUserData } from '../lib/db';
 
 export interface AuthUser {
   id: string;
@@ -23,7 +24,7 @@ const ACCESS_KEY = 'sts_access_token';
 const REFRESH_KEY = 'sts_refresh_token';
 const USER_KEY = 'sts_user';
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   accessToken: null,
   refreshToken: null,
   user: null,
@@ -42,6 +43,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
   },
   async setSession(accessToken, refreshToken, user) {
+    const previousUser = get().user;
+    if (previousUser && previousUser.id !== user.id) {
+      // Switching accounts on this device — drop any cached data from the previous account
+      // so it never leaks into the new account's assignment list.
+      await clearLocalUserData();
+    }
     await Promise.all([
       SecureStore.setItemAsync(ACCESS_KEY, accessToken),
       SecureStore.setItemAsync(REFRESH_KEY, refreshToken),
@@ -55,6 +62,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       SecureStore.deleteItemAsync(REFRESH_KEY),
       SecureStore.deleteItemAsync(USER_KEY),
     ]);
+    await clearLocalUserData();
     set({ accessToken: null, refreshToken: null, user: null });
   },
 }));

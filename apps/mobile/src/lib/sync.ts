@@ -20,6 +20,7 @@ interface RemoteAssignment {
     location: string | null;
     rackNumber: string | null;
   };
+  zone: { id: string; zoneCode: string; label: string | null } | null;
   countRecords: RemoteCountRecord[];
 }
 
@@ -39,8 +40,8 @@ export async function pullAssignments() {
     const latest = a.countRecords[0];
     await db.runAsync(
       `INSERT INTO assignments
-        (id, product_id, product_code, description, barcode, location, rack_number, system_qty, status, attempts_used, last_attempt_status, last_attempt_result, synced_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, product_id, product_code, description, barcode, location, rack_number, system_qty, status, zone_id, zone_label, attempts_used, last_attempt_status, last_attempt_result, synced_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
         product_code = excluded.product_code,
         description = excluded.description,
@@ -49,6 +50,8 @@ export async function pullAssignments() {
         rack_number = excluded.rack_number,
         system_qty = excluded.system_qty,
         status = excluded.status,
+        zone_id = excluded.zone_id,
+        zone_label = excluded.zone_label,
         attempts_used = excluded.attempts_used,
         last_attempt_status = excluded.last_attempt_status,
         last_attempt_result = excluded.last_attempt_result,
@@ -63,6 +66,8 @@ export async function pullAssignments() {
         a.product.rackNumber,
         Number(a.product.systemQty),
         a.status,
+        a.zone?.id ?? null,
+        a.zone ? (a.zone.label ?? a.zone.zoneCode) : null,
         a.countRecords.length,
         latest?.status ?? null,
         latest?.result ?? null,
@@ -70,6 +75,18 @@ export async function pullAssignments() {
       ],
     );
   }
+
+  // Remove any locally-cached assignments the server no longer returns for this account
+  // (e.g. reassigned elsewhere, or stale data left behind by a previous login on this device).
+  // Keep rows that still have an unsynced count queued so that submission isn't lost.
+  const serverIds = data.map((a) => a.id);
+  const placeholders = serverIds.length > 0 ? serverIds.map(() => '?').join(',') : "''";
+  await db.runAsync(
+    `DELETE FROM assignments
+     WHERE id NOT IN (${placeholders})
+       AND id NOT IN (SELECT DISTINCT assignment_id FROM pending_count_records WHERE synced = 0)`,
+    serverIds,
+  );
 
   return data.length;
 }
