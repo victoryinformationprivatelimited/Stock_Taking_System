@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: sts_dev_password
       POSTGRES_DB: stock_taking
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - sts_postgres_data:/var/lib/postgresql/data
 
@@ -26,3 +26,7 @@ services:
 volumes:
   sts_postgres_data:
   sts_redis_data:
+
+
+  # changed port from 5432 to 5433
+  # running command - docker compose up -d
