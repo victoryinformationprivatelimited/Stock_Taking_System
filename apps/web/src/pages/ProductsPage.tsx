@@ -25,7 +25,7 @@ export function ProductsPage() {
   });
 
   return (
-    <Stack gap="lg">
+    <Stack gap="lg" style={{padding:'20px'}}>
       <Group justify="space-between">
         <Title order={2}>Products</Title>
       </Group>

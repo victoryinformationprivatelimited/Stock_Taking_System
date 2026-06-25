@@ -190,7 +190,7 @@ export function LayoutEditorPage() {
   }
 
   return (
-    <Stack gap="lg">
+    <Stack gap="lg" style={{padding:'20px'}}>
       <Group justify="space-between">
         <Title order={2}>{layout.name}</Title>
         <Text c="dimmed" size="sm">

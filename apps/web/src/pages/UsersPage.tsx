@@ -63,7 +63,7 @@ export function UsersPage() {
   }
 
   return (
-    <Stack gap="lg">
+    <Stack gap="lg" style={{padding:'20px'}}>
       <Title order={2}>Counters</Title>
 
       <Paper radius="md" p="lg" withBorder>

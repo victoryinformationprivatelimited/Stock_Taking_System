@@ -55,7 +55,7 @@ export function UploadPage() {
   });
 
   return (
-    <Stack gap="lg">
+    <Stack gap="lg" style={{padding:'20px'}}>
       <Title order={2}>Stock Upload</Title>
       <Text c="dimmed">
         Upload the Navision stock export (.xlsx) with columns: Product Code, Description, Barcode,

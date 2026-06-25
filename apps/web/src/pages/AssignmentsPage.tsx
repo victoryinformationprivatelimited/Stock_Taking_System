@@ -110,7 +110,7 @@ export function AssignmentsPage() {
   }
 
   return (
-    <Stack gap="lg">
+    <Stack gap="lg" style={{padding:'20px'}}>
       <Title order={2}>Assignments</Title>
 
       <Paper radius="md" p="lg" withBorder>

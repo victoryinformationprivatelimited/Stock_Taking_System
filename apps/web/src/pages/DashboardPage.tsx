@@ -176,19 +176,19 @@ export function DashboardPage() {
 
   return (
     <Stack gap="xl">
-      <div>
+      <div style={{ padding: '20px' }}>
         <Title order={2}>Manager Dashboard</Title>
         <Text c="dimmed">Live overview of stock counting progress</Text>
       </div>
 
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
+      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} style={{padding: '20px'}}>
         <StatCard label="Products" value={products?.length ?? 0} icon={<IconPackages size={26} />} color="violet" />
         <StatCard label="Assignments" value={assignments?.length ?? 0} icon={<IconClipboardList size={26} />} color="blue" />
         <StatCard label="Pending Approval" value={pendingApprovals} icon={<IconAlertTriangle size={26} />} color="orange" />
         <StatCard label="Mismatches" value={mismatches} icon={<IconAlertTriangle size={26} />} color="red" />
       </SimpleGrid>
 
-      <Grid>
+      <Grid style={{padding:'20px'}}>
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Paper radius="md" p="lg" withBorder h="100%">
             <Title order={4} mb="md">

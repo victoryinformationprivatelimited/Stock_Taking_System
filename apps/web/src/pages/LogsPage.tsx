@@ -38,7 +38,7 @@ export function LogsPage() {
   });
 
   return (
-    <Stack gap="lg">
+    <Stack gap="lg" style={{padding:'20px'}}>
       <Title order={2}>Logs</Title>
 
       <Tabs defaultValue="audit">

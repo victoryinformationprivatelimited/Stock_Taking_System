@@ -45,7 +45,7 @@ export function ReportsPage() {
   });
 
   return (
-    <Stack gap="lg">
+    <Stack gap="lg" style={{padding:'20px'}}>
       <Title order={2}>Reports</Title>
 
       <Tabs defaultValue="mismatches">

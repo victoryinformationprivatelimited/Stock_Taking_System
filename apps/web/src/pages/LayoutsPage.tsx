@@ -61,7 +61,7 @@ export function LayoutsPage() {
   });
 
   return (
-    <Stack gap="lg">
+    <Stack gap="lg" style={{padding:'20px'}}>
       <Group justify="space-between">
         <Title order={2}>Store Layouts</Title>
         <Button leftSection={<IconPlus size={16} />} onClick={() => setModalOpen(true)}>
