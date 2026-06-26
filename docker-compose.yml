@@ -1,0 +1,19 @@
+# Local dev Postgres — same database engine as production, run standalone
+# (apps/api connects to it via DATABASE_URL in apps/api/.env, not via this
+# compose file's env vars; keep the two in sync).
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sts-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sts
+      POSTGRES_PASSWORD: sts_dev_password
+      POSTGRES_DB: stock_taking
+    ports:
+      - "5432:5432"
+    volumes:
+      - sts_postgres_dev_data:/var/lib/postgresql/data
+
+volumes:
+  sts_postgres_dev_data:
