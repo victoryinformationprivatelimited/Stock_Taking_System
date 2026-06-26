@@ -126,9 +126,15 @@ export function LayoutEditorPage() {
   }, [selectedZoneId, layout]);
 
   function handleStageMouseDown(e: Konva.KonvaEventObject<MouseEvent>) {
-    if (e.target !== e.target.getStage()) return;
+    const stage = e.target.getStage();
+    if (!stage) return;
+    // The layout image covers the whole stage, so clicks land on it (not the
+    // bare Stage). Allow drawing from the stage or the background image, but
+    // not from an existing zone rect or a transformer resize handle.
+    const isBackground = e.target === stage || e.target.getClassName() === 'Image';
+    if (!isBackground) return;
     setSelectedZoneId(null);
-    const pos = e.target.getStage()!.getPointerPosition()!;
+    const pos = stage.getPointerPosition()!;
     setDrawStart(pos);
     setDraftRect({ x: pos.x, y: pos.y, width: 0, height: 0 });
   }
