@@ -8,6 +8,7 @@ import {
   IconUsers,
   IconClipboardList,
   IconMap,
+  IconBoxMultiple,
   IconReportAnalytics,
   IconListDetails,
   IconLogout,
@@ -22,6 +23,7 @@ const navItems = [
   { to: '/users', label: 'Counters', icon: IconUsers },
   { to: '/assignments', label: 'Assignments', icon: IconClipboardList },
   { to: '/layouts', label: 'Store Layouts', icon: IconMap },
+  { to: '/zone-products', label: 'Zone Products', icon: IconBoxMultiple },
   { to: '/reports', label: 'Reports', icon: IconReportAnalytics },
   { to: '/logs', label: 'Logs', icon: IconListDetails },
 ];

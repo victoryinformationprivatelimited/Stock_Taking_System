@@ -8,6 +8,7 @@ import { UsersPage } from './pages/UsersPage';
 import { AssignmentsPage } from './pages/AssignmentsPage';
 import { LayoutsPage } from './pages/LayoutsPage';
 import { LayoutEditorPage } from './pages/LayoutEditorPage';
+import { ZoneProductsPage } from './pages/ZoneProductsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { LogsPage } from './pages/LogsPage';
 import { RequireAuth } from './components/RequireAuth';
@@ -28,6 +29,7 @@ function App() {
             <Route path="/assignments" element={<AssignmentsPage />} />
             <Route path="/layouts" element={<LayoutsPage />} />
             <Route path="/layouts/:id" element={<LayoutEditorPage />} />
+            <Route path="/zone-products" element={<ZoneProductsPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/logs" element={<LogsPage />} />
           </Route>

@@ -78,7 +78,18 @@ export class AssignmentsService {
       throw new BadRequestException('This zone has no products mapped to it');
     }
 
-    const productIds = zone.productMaps.map((m) => m.productId);
+    let zoneProductMaps = zone.productMaps;
+    if (dto.productIds && dto.productIds.length > 0) {
+      const zoneProductIdSet = new Set(zone.productMaps.map((m) => m.productId));
+      const invalid = dto.productIds.filter((id) => !zoneProductIdSet.has(id));
+      if (invalid.length > 0) {
+        throw new BadRequestException('One or more products are not mapped to this zone');
+      }
+      const requested = new Set(dto.productIds);
+      zoneProductMaps = zone.productMaps.filter((m) => requested.has(m.productId));
+    }
+
+    const productIds = zoneProductMaps.map((m) => m.productId);
 
     // Skip products that already have an unresolved (non-DONE) assignment for this counter.
     const existing = await this.prisma.countAssignment.findMany({
@@ -86,7 +97,7 @@ export class AssignmentsService {
       select: { productId: true },
     });
     const existingProductIds = new Set(existing.map((e) => e.productId));
-    const toAssign = zone.productMaps.filter((m) => !existingProductIds.has(m.productId));
+    const toAssign = zoneProductMaps.filter((m) => !existingProductIds.has(m.productId));
 
     if (toAssign.length === 0) {
       throw new BadRequestException('All products in this zone are already assigned to this counter');

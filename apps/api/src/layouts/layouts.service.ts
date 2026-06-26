@@ -51,6 +51,20 @@ export class LayoutsService {
     }));
   }
 
+  async findZone(zoneId: string) {
+    const zone = await this.prisma.layoutZone.findFirst({
+      where: { id: zoneId, layout: { tenantId: this.tenantContext.tenantId } },
+      include: {
+        layout: { select: { id: true, name: true } },
+        productMaps: { include: { product: true } },
+      },
+    });
+    if (!zone) {
+      throw new NotFoundException('Zone not found');
+    }
+    return zone;
+  }
+
   async findOne(id: string) {
     const layout = await this.prisma.storeLayout.findFirst({
       where: { id, tenantId: this.tenantContext.tenantId },

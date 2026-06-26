@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Badge,
@@ -35,6 +35,13 @@ interface Zone {
   label: string | null;
   layout: { id: string; name: string };
   productCount: number;
+}
+
+interface ZoneDetail {
+  id: string;
+  zoneCode: string;
+  label: string | null;
+  productMaps: { product: Product }[];
 }
 
 interface CountRecord {
@@ -74,6 +81,7 @@ export function AssignmentsPage() {
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [zoneCounterId, setZoneCounterId] = useState<string | null>(null);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
+  const [selectedZoneProductIds, setSelectedZoneProductIds] = useState<string[]>([]);
 
   const { data: assignments } = useQuery({
     queryKey: ['assignments'],
@@ -95,6 +103,21 @@ export function AssignmentsPage() {
     queryFn: async () => (await api.get<Zone[]>('/layouts/zones')).data,
   });
 
+  const { data: zoneDetail } = useQuery({
+    queryKey: ['layouts', 'zones', selectedZoneId],
+    queryFn: async () => (await api.get<ZoneDetail>(`/layouts/zones/${selectedZoneId}`)).data,
+    enabled: !!selectedZoneId,
+  });
+
+  // Default to all of the zone's products selected whenever a new zone is picked.
+  useEffect(() => {
+    if (zoneDetail) {
+      setSelectedZoneProductIds(zoneDetail.productMaps.map((m) => m.product.id));
+    } else {
+      setSelectedZoneProductIds([]);
+    }
+  }, [zoneDetail?.id]);
+
   const assignMutation = useMutation({
     mutationFn: async () => api.post('/assignments', { counterId, productIds: selectedProductIds }),
     onSuccess: () => {
@@ -106,7 +129,11 @@ export function AssignmentsPage() {
 
   const assignZoneMutation = useMutation({
     mutationFn: async () =>
-      api.post('/assignments/zone', { counterId: zoneCounterId, zoneId: selectedZoneId }),
+      api.post('/assignments/zone', {
+        counterId: zoneCounterId,
+        zoneId: selectedZoneId,
+        productIds: selectedZoneProductIds,
+      }),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
       setSelectedZoneId(null);
@@ -145,6 +172,17 @@ export function AssignmentsPage() {
 
   function toggleProduct(id: string) {
     setSelectedProductIds((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
+  }
+
+  function toggleZoneProduct(id: string) {
+    setSelectedZoneProductIds((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
+  }
+
+  const zoneProducts = zoneDetail?.productMaps.map((m) => m.product) ?? [];
+  const allZoneProductsSelected = zoneProducts.length > 0 && selectedZoneProductIds.length === zoneProducts.length;
+
+  function toggleSelectAllZoneProducts() {
+    setSelectedZoneProductIds(allZoneProductsSelected ? [] : zoneProducts.map((p) => p.id));
   }
 
   return (
@@ -219,13 +257,45 @@ export function AssignmentsPage() {
                 onChange={setSelectedZoneId}
                 w={420}
               />
+
+              {selectedZoneId && (
+                <Paper withBorder radius="sm" p="sm" mah={260} style={{ overflow: 'hidden' }}>
+                  {zoneProducts.length > 0 ? (
+                    <>
+                      <Checkbox
+                        label={`Select all (${zoneProducts.length})`}
+                        checked={allZoneProductsSelected}
+                        onChange={toggleSelectAllZoneProducts}
+                        mb="xs"
+                      />
+                      <ScrollArea h={180}>
+                        <Stack gap={6}>
+                          {zoneProducts.map((p) => (
+                            <Checkbox
+                              key={p.id}
+                              label={`${p.productCode} — ${p.description}`}
+                              checked={selectedZoneProductIds.includes(p.id)}
+                              onChange={() => toggleZoneProduct(p.id)}
+                            />
+                          ))}
+                        </Stack>
+                      </ScrollArea>
+                    </>
+                  ) : (
+                    <Text size="sm" c="dimmed">
+                      This zone has no products mapped to it yet. Map products from the Zone Products page first.
+                    </Text>
+                  )}
+                </Paper>
+              )}
+
               <Button
                 w="fit-content"
-                disabled={!zoneCounterId || !selectedZoneId}
+                disabled={!zoneCounterId || !selectedZoneId || selectedZoneProductIds.length === 0}
                 loading={assignZoneMutation.isPending}
                 onClick={() => assignZoneMutation.mutate()}
               >
-                Assign zone
+                Assign {selectedZoneProductIds.length || ''} product(s)
               </Button>
               {!zones?.length && (
                 <Text size="sm" c="dimmed">

@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { ArrayUnique, IsArray, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class AssignZoneDto {
   @IsUUID()
@@ -6,6 +6,12 @@ export class AssignZoneDto {
 
   @IsUUID()
   zoneId: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  productIds?: string[];
 
   @IsOptional()
   @IsString()

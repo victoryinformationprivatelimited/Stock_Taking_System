@@ -36,6 +36,11 @@ export class LayoutsController {
     return this.layoutsService.findAllZones();
   }
 
+  @Get('zones/:zoneId')
+  findZone(@Param('zoneId') zoneId: string) {
+    return this.layoutsService.findZone(zoneId);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.layoutsService.findOne(id);
