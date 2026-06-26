@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -24,6 +26,14 @@ import { ReportsModule } from './reports/reports.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'public'),
+      // NB: this version of path-to-regexp treats '*' as a literal character,
+      // not a wildcard — '/api*' only matches the literal string "/api*".
+      // '/api/(.*)' is the wildcard form that actually excludes everything
+      // under /api (and /static) from the SPA catch-all.
+      exclude: ['/api/(.*)', '/static/(.*)'],
+    }),
     PrismaModule,
     CommonModule,
     AuditModule,

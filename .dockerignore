@@ -1,0 +1,32 @@
+# Never ship host (Windows) node_modules into the Linux image — they would
+# clobber the freshly-installed Linux deps and break native binaries
+# (vite/esbuild, prisma engines, bcrypt). Each build stage installs its own.
+**/node_modules
+
+# Build outputs
+apps/api/dist
+apps/web/dist
+apps/api/public
+
+# Mobile app is not part of the server container at all
+apps/mobile
+
+# Local env / secrets
+**/.env
+**/.env.*
+!**/.env.example
+
+# Native build artifacts, caches, VCS
+**/.cxx
+**/.gradle
+**/android/build
+.git
+.gitignore
+builds
+**/*.apk
+
+# Editor / OS noise
+**/.vscode
+**/.idea
+**/.DS_Store
+**/.expo

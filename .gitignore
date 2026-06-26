@@ -17,3 +17,5 @@ apps/api/static/*
 !apps/api/static/layouts
 apps/api/static/layouts/*
 !apps/api/static/layouts/.gitkeep
+
+builds/
